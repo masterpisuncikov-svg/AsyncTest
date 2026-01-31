@@ -1,0 +1,25 @@
+<script>
+// Укажи свой URL сервера
+const SERVER = 'http://localhost:3000';
+
+// Отправить команду в Roblox
+function sendCommand(playerId, action, value) {
+    fetch(`${SERVER}/command`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({playerId, action, value})
+    }).then(r => r.json()).then(console.log);
+}
+
+// Получить команды из Roblox
+function getCommands(playerId) {
+    fetch(`${SERVER}/commands/${playerId}`)
+        .then(r => r.json())
+        .then(data => console.log('Commands:', data.commands));
+}
+</script>
+
+<!-- Примеры кнопок -->
+<button onclick="sendCommand('123', 'teleport', '10,20,30')">Телепорт</button>
+<button onclick="sendCommand('123', 'message', 'Привет')">Сообщение</button>
+<button onclick="getCommands('123')">Получить команды</button>
