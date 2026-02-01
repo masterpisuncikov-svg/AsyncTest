@@ -1,26 +1,40 @@
 class GameManager {
     constructor() {
-        this.games = this.loadGames();
-        this.displayGames();
+        this.games = [];
+        this.jsonUrl = 'games.json'; // Или URL на GitHub
+        this.loadFromJSON();
     }
     
-    // Загрузить игры из localStorage
-    loadGames() {
+    // Загрузить игры из JSON файла
+    async loadFromJSON() {
+        try {
+            const response = await fetch(this.jsonUrl);
+            if (response.ok) {
+                this.games = await response.json();
+                this.saveToLocalStorage();
+                this.displayGames();
+            } else {
+                // Если не удалось загрузить, используем localStorage
+                this.games = this.loadFromLocalStorage();
+            }
+        } catch (error) {
+            console.error('Ошибка загрузки JSON:', error);
+            this.games = this.loadFromLocalStorage();
+        }
+    }
+    
+    // Загрузить из localStorage
+    loadFromLocalStorage() {
         const saved = localStorage.getItem('robloxGames');
         return saved ? JSON.parse(saved) : [];
     }
     
-    // Сохранить игры в localStorage
-    saveGames() {
+    // Сохранить в localStorage
+    saveToLocalStorage() {
         localStorage.setItem('robloxGames', JSON.stringify(this.games));
     }
     
-    // Проверить существует ли игра
-    gameExists(gameId) {
-        return this.games.some(game => game.id === gameId);
-    }
-    
-    // Добавить игру
+    // Обновленный метод добавления игры
     addGame(gameId, gameName) {
         if (!gameId || !gameName) {
             this.showMessage('Введите ID и название игры', 'error');
@@ -33,144 +47,135 @@ class GameManager {
         }
         
         const newGame = {
-            id: gameId,
+            id: parseInt(gameId),
             name: gameName.trim(),
-            added: new Date().toLocaleString('ru-RU')
+            added: new Date().toISOString().slice(0, 19).replace('T', ' '),
+            players: 0,
+            genre: "Не указан"
         };
         
         this.games.push(newGame);
-        this.saveGames();
+        this.saveToLocalStorage();
         this.displayGames();
         this.showMessage(`Игра "${gameName}" успешно добавлена!`, 'success');
         
-        // Очистить поля ввода
+        // Очистить поля
         document.getElementById('gameIdInput').value = '';
         document.getElementById('gameNameInput').value = '';
+        
+        // Экспорт в файл (для скачивания)
+        this.exportGamesToFile();
         
         return true;
     }
     
-    // Удалить игру
-    deleteGame(gameId) {
-        const index = this.games.findIndex(game => game.id === gameId);
-        if (index !== -1) {
-            const gameName = this.games[index].name;
-            this.games.splice(index, 1);
-            this.saveGames();
-            this.displayGames();
-            this.showMessage(`Игра "${gameName}" удалена`, 'success');
-        }
-    }
-    
-    // Отобразить все игры
-    displayGames() {
-        const container = document.getElementById('gamesContainer');
-        const countElement = document.getElementById('gameCount');
-        
-        if (this.games.length === 0) {
-            container.innerHTML = `
-                <div class="empty-list">
-                    <p>Список игр пуст. Добавьте первую игру!</p>
-                </div>
-            `;
-            countElement.textContent = '0';
-            return;
-        }
-        
-        container.innerHTML = this.games.map(game => `
-            <div class="game-item">
-                <div class="game-info">
-                    <span class="game-id">ID: ${game.id}</span>
-                    <span class="game-name">${game.name}</span>
-                    <span class="game-added">Добавлено: ${game.added}</span>
-                </div>
-                <button class="delete-btn" onclick="gameManager.deleteGame('${game.id}')">
-                    Удалить
-                </button>
-            </div>
-        `).join('');
-        
-        countElement.textContent = this.games.length;
-    }
-    
-    // Показать сообщение
-    showMessage(text, type) {
-        const container = document.getElementById('messageContainer');
-        const message = document.createElement('div');
-        message.className = `message ${type}`;
-        message.textContent = text;
-        
-        container.innerHTML = '';
-        container.appendChild(message);
-        
-        setTimeout(() => {
-            message.style.transition = 'opacity 0.5s';
-            message.style.opacity = '0';
-            setTimeout(() => {
-                if (container.contains(message)) {
-                    container.removeChild(message);
-                }
-            }, 500);
-        }, 3000);
-    }
-    
-    // Экспорт в JSON
-    exportToJSON() {
+    // Экспорт игр в JSON файл
+    exportGamesToFile() {
         const dataStr = JSON.stringify(this.games, null, 2);
-        const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+        const blob = new Blob([dataStr], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
         
-        const exportFileDefaultName = 'roblox_games.json';
-        const linkElement = document.createElement('a');
-        linkElement.setAttribute('href', dataUri);
-        linkElement.setAttribute('download', exportFileDefaultName);
-        linkElement.click();
+        // Автоматическое скачивание не делаем, только для ручного экспорта
+        console.log('Игры сохранены, готовы к экспорту');
     }
     
-    // Импорт из JSON
-    importFromJSON(file) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            try {
-                const importedGames = JSON.parse(e.target.result);
-                let added = 0;
-                let skipped = 0;
-                
-                importedGames.forEach(game => {
-                    if (!this.gameExists(game.id)) {
-                        this.games.push(game);
-                        added++;
-                    } else {
-                        skipped++;
-                    }
-                });
-                
-                this.saveGames();
-                this.displayGames();
-                this.showMessage(
-                    `Импорт завершен: добавлено ${added}, пропущено ${skipped} (дубликаты)`,
-                    'success'
-                );
-            } catch (error) {
-                this.showMessage('Ошибка при импорте файла', 'error');
-            }
-        };
-        reader.readAsText(file);
+    // Генерация кода для Roblox
+    generateRobloxCode() {
+        let code = '-- Автоматически сгенерированный код\n';
+        code += 'local GamesDatabase = {\n';
+        
+        this.games.forEach((game, index) => {
+            code += `    [${game.id}] = "${game.name}"`;
+            if (index < this.games.length - 1) code += ',';
+            code += '\n';
+        });
+        
+        code += '}\n\n';
+        code += 'function CheckGame(gameId)\n';
+        code += '    return GamesDatabase[gameId] ~= nil\n';
+        code += 'end\n';
+        code += '\n';
+        code += 'function GetGameName(gameId)\n';
+        code += '    return GamesDatabase[gameId] or "Неизвестная игра"\n';
+        code += 'end';
+        
+        return code;
+    }
+    
+    // Показать код для Roblox
+    showRobloxCode() {
+        const code = this.generateRobloxCode();
+        const modal = document.createElement('div');
+        modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        `;
+        
+        const content = document.createElement('div');
+        content.style.cssText = `
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            max-width: 80%;
+            max-height: 80%;
+            overflow: auto;
+        `;
+        
+        const pre = document.createElement('pre');
+        pre.textContent = code;
+        pre.style.cssText = 'background: #f5f5f5; padding: 15px; border-radius: 5px;';
+        
+        const button = document.createElement('button');
+        button.textContent = 'Закрыть';
+        button.onclick = () => modal.remove();
+        button.style.cssText = `
+            margin-top: 15px;
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        `;
+        
+        content.appendChild(pre);
+        content.appendChild(button);
+        modal.appendChild(content);
+        document.body.appendChild(modal);
     }
 }
 
-// Глобальный экземпляр менеджера игр
-const gameManager = new GameManager();
-
-// Функция для добавления игры (вызывается из HTML)
-function addGame() {
-    const gameId = document.getElementById('gameIdInput').value;
-    const gameName = document.getElementById('gameNameInput').value;
-    gameManager.addGame(gameId, gameName);
+// Добавьте эту кнопку в HTML
+function addRobloxButton() {
+    const button = document.createElement('button');
+    button.textContent = 'Получить код для Roblox';
+    button.onclick = () => gameManager.showRobloxCode();
+    button.style.cssText = `
+        margin: 20px auto;
+        display: block;
+        padding: 12px 25px;
+        background: linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+    `;
+    
+    document.querySelector('.main-content').appendChild(button);
 }
 
-// Добавить обработчик нажатия Enter
-document.getElementById('gameNameInput').addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') {
-        addGame();
-    }
+// Инициализация после загрузки страницы
+document.addEventListener('DOMContentLoaded', () => {
+    window.gameManager = new GameManager();
+    addRobloxButton();
 });
