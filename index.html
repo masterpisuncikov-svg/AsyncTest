@@ -1,25 +1,216 @@
-<script>
-// Укажи свой URL сервера
-const SERVER = 'http://localhost:3000';
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Список игр Roblox</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            opacity: 0.9;
+        }
+        
+        .main-content {
+            padding: 30px;
+        }
+        
+        .add-game-form {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+        
+        .add-game-form input {
+            flex: 1;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        .add-game-form input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .add-game-form button {
+            padding: 12px 25px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        .add-game-form button:hover {
+            transform: translateY(-2px);
+        }
+        
+        .games-list {
+            margin-top: 20px;
+        }
+        
+        .games-list h2 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.8em;
+        }
+        
+        .game-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            margin-bottom: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+            transition: transform 0.2s;
+        }
+        
+        .game-item:hover {
+            transform: translateX(5px);
+            background: #eef2ff;
+        }
+        
+        .game-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .game-id {
+            background: #667eea;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: 600;
+        }
+        
+        .game-name {
+            font-size: 1.1em;
+            color: #333;
+            font-weight: 500;
+        }
+        
+        .game-added {
+            color: #666;
+            font-size: 0.9em;
+        }
+        
+        .delete-btn {
+            background: #ff4757;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        .delete-btn:hover {
+            background: #ff3742;
+        }
+        
+        .message {
+            padding: 12px;
+            margin: 10px 0;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: 500;
+        }
+        
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .empty-list {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎮 База данных игр Roblox</h1>
+            <p>Добавляйте и управляйте списком игр. Дубликаты не допускаются.</p>
+        </div>
+        
+        <div class="main-content">
+            <div class="add-game-form">
+                <input type="number" 
+                       id="gameIdInput" 
+                       placeholder="Введите ID игры Roblox" 
+                       min="1">
+                <input type="text" 
+                       id="gameNameInput" 
+                       placeholder="Введите название игры">
+                <button onclick="addGame()">Добавить игру</button>
+            </div>
+            
+            <div id="messageContainer"></div>
+            
+            <div class="games-list">
+                <h2>Добавленные игры (<span id="gameCount">0</span>)</h2>
+                <div id="gamesContainer">
+                    <!-- Сюда будут добавляться игры -->
+                </div>
+            </div>
+        </div>
+    </div>
 
-// Отправить команду в Roblox
-function sendCommand(playerId, action, value) {
-    fetch(`${SERVER}/command`, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({playerId, action, value})
-    }).then(r => r.json()).then(console.log);
-}
-
-// Получить команды из Roblox
-function getCommands(playerId) {
-    fetch(`${SERVER}/commands/${playerId}`)
-        .then(r => r.json())
-        .then(data => console.log('Commands:', data.commands));
-}
-</script>
-
-<!-- Примеры кнопок -->
-<button onclick="sendCommand('123', 'teleport', '10,20,30')">Телепорт</button>
-<button onclick="sendCommand('123', 'message', 'Привет')">Сообщение</button>
-<button onclick="getCommands('123')">Получить команды</button>
+    <script src="script.js"></script>
+</body>
+</html>
